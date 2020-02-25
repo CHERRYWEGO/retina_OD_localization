@@ -332,7 +332,7 @@ if __name__ == '__main__':
 
     # only test images
     parser.add_argument('--data_path_test',
-                        default='/home/shiluj/DATASET/OD_CLA2019/image256/',
+                        default='/testdata/',
                         type=str,
                         help='Path to test dataset')
 
