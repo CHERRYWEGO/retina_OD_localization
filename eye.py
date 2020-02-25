@@ -16,12 +16,9 @@ from torch.autograd import Variable
 from torchvision import transforms
 from tqdm import tqdm
 
-from evaluation.StructureAwareLoss import StructureAwareLoss
-from evaluation.fashionloss import FashionMeter, heatmapcenter, EyeMeter
+from evaluation.fashionloss import EyeMeter
 from pose import Bar
-from pose.datasets.eye import eye_data
-from pose.datasets.eye import eye_data
-from pose.datasets.fashionAi import fashion_data
+from pose.datasets.eye import eye_data, eye_testdata
 from pose.utils.logger import Logger, savefig
 from pose.utils.evaluation import accuracy, AverageMeter, final_preds, get_preds
 from pose.utils.misc import save_checkpoint, save_pred, adjust_learning_rate, save_checkpoint2
@@ -37,48 +34,36 @@ model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
 
-# idx = [1, 2, 3, 4, 5, 6, 11, 12, 15, 16]
-
 def main(args):
     print("==> creating model '{}', stacks={}, blocks={}".format(args.arch, args.stacks, args.blocks))
     model = models.__dict__[args.arch](num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.num_classes)
 
     model = torch.nn.DataParallel(model).cuda()
+
     criterion = torch.nn.MSELoss(size_average=True).cuda()
     optimizer = torch.optim.RMSprop(model.parameters(),
                                     lr=args.lr)
-    title = 'eye-' + args.arch
-    # if args.resume:
-    #     if isfile(args.resume):
-    #         print("=> loading checkpoint '{}'".format(args.resume))
-    #         checkpoint = torch.load(args.resume)
-    #         # args.start_epoch = checkpoint['epoch']
-    #         # best_acc = checkpoint['best_acc']
-    #         model.load_state_dict(checkpoint['state_dict'])
-    #         optimizer.load_state_dict(checkpoint['optimizer'])
-    #         print("=> loaded checkpoint '{}' (epoch {})"
-    #               .format(args.resume, checkpoint['epoch']))
-    #         # logger = Logger(join(args.checkpoint, 'log.txt'), title=title, resume=True)
-    #     else:
-    #         print("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
+
     print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters()) / 1000000.0))
 
-    train_df = eye_data(args.data_path, args.data_label_path)
-    train_data = train_df.sample(frac=1)
-    # test_df = eye_data2(args.data_path_test)
-    test_df = eye_data(args.data_path_test, args.data_label_test_path)
-    test_data = test_df.sample(frac=1)
-    # valid_data = train_df[~train_df['file'].isin(train_data['file'])].sample(frac=1)
-    # Data loading code
-    train_loader = torch.utils.data.DataLoader(
-        datasets.Eye2(df=train_data, img_folder=args.data_path, mask_folder=args.data_label_path, sigma=args.sigma),
-        batch_size=args.train_batch, shuffle=True,
-        num_workers=args.workers, pin_memory=True)
+    # train_data = eye_data(args.data_path, args.data_label_path)
+    # test_data = eye_data(args.data_path_test, args.data_label_test_path)
+    test_data = eye_testdata(args.data_path_test)
+    
+    # # Data loading code
+    # train_loader = torch.utils.data.DataLoader(
+    #     datasets.Eye(df=train_data, img_folder=args.data_path, 
+    #     mask_folder=args.data_label_path, sigma=args.sigma),
+    #     batch_size=args.train_batch, shuffle=True,
+    #     num_workers=args.workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(
-        datasets.Eye2(df=test_data, img_folder=args.data_path_test, mask_folder=args.data_label_test_path, sigma=args.sigma, test_condition=True),
+        # datasets.Eye(df=test_data, img_folder=args.data_path_test,
+        datasets.Eyetest(df=test_data, img_folder=args.data_path_test, 
+        # mask_folder=args.data_label_test_path, 
+        sigma=args.sigma, test_condition=True),
         batch_size=args.test_batch, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
@@ -86,14 +71,12 @@ def main(args):
         mkdir_p(args.checkpoint)
 
     # optionally resume from a checkpoint
-    # args.evaluate = True
+    args.evaluate = True
     if args.evaluate:
         print('\nEvaluation only')
-        model.module.load_state_dict(torch.load('model_3.pth'))
+        model.module.load_state_dict(torch.load('OMIA.pth'))
         valid_loss = validate(val_loader, model, criterion, args.num_classes, args.strucloss_alpha,
                               args.debug, args.flip)
-        # loss, acc, predictions = validate(val_loader, model, criterion, args.num_classes, args.debug, args.flip)
-        # save_pred(predictions, checkpoint=args.checkpoint)
         return
 
     lr = args.lr
@@ -122,36 +105,6 @@ def main(args):
             best_loss = valid_loss
             real_model = model.module
             torch.save(real_model.state_dict(), str(round(valid_loss, 4)) + "_model.pth")
-
-        # valid_loss = 0.02
-        # columns = []
-        # is_best = valid_loss < best_loss
-        # if is_best:
-        #     break_point = 0
-        # else:
-        #     break_point += 1
-        #     if break_point > 40:
-        #         break
-        # if is_best and valid_loss < 0.10:
-        #     best_loss = float(valid_loss)
-        #     print("*** EARLY STOPPING ***")
-        #     # s_submission = pd.read_csv(args.data_path + '../sample_submission.csv', engine="python", error_bad_lines=False)
-        #     # df_pred = testModel(args.data_path_test, model, columns, train_loader.dataset.mean, train_loader.dataset.std)
-        #     df_pred = testModel(args, args.data_path_test, model, columns, train_loader.dataset.mean, train_loader.dataset.std)
-        #     pre = args.save_path_model + '/pth/'
-        #     if not os.path.isdir(pre):
-        #         os.makedirs(pre)
-        #     fName = pre + args.kind + '_' + str(valid_loss)
-        #     csv_path = str(fName + '_submission.csv')
-        #     df_pred.to_csv(csv_path, index=False)
-        #     # df_pred.to_csv(csv_path, columns=('id', 'is_iceberg'), index=None)
-        #     print(csv_path)
-        #     save_checkpoint2({
-        #         'epoch': epoch + 1,
-        #         'arch': args.arch,
-        #         'state_dict': model.state_dict(),
-        #         'optimizer': optimizer.state_dict(),
-        #     }, is_best, checkpoint=args.checkpoint + "/" + args.kind + '_' + str (valid_loss) + "/")
     #
     real_model = model.module
     torch.save(real_model.state_dict(), "model_last.pth")
@@ -233,11 +186,11 @@ def validate(val_loader, model, criterion, num_classes, alpha, debug=False, flip
         end = time.time()
         bar = Bar('Processing', max=len(val_loader))
         # for i, (inputs, target, meta) in enumerate(tqdm(val_loader)):
-        for i, (inputs, target, meta) in enumerate(tqdm(val_loader)):
+        for i, (inputs, meta) in enumerate(tqdm(val_loader)):
             # measure data loading time
             data_time.update(time.time() - end)
             input_var = inputs.cuda()
-            target_var = target.cuda()
+            # target_var = target.cuda()
 
             # save input_image
             # imgs = input_var.cpu().numpy()
@@ -247,28 +200,24 @@ def validate(val_loader, model, criterion, num_classes, alpha, debug=False, flip
             end = time.time()
             output = model(input_var)
             batch_time.update(time.time() - end)
-            loss = criterion(output[0], target_var)
+            # loss = criterion(output[0], target_var)
 
-
-            # save heatmap
-            # heat_map = output[-1].cpu().numpy()
-            # np.save('heat_map_{}'.format(i), heat_map)
-
-            for o in output[1:]:
-                loss += criterion(o, target_var)
-            true_loss.update_box(output[-1], meta, target, True)
-            # true_loss.update_all(output[-1], meta, target, True)
+            # for o in output[1:]:
+            #     loss += criterion(o, target_var)
+            # true_loss.update_box(output[-1], meta, target, True)
+            true_loss.update_res(output[-1], meta, bilinear_test=True)
             # true_loss.update_heatmap(output[-1], meta, target)
             # true_loss.update_circle(output[-1], meta, True)
             # output[-1].cpu().numpy()
 
             # measure accuracy and record loss
-            losses.update(loss.item(), inputs.size(0))
+            # losses.update(loss.item(), inputs.size(0))
             # acces.update(acc[0], inputs.size(0))
 
             # measure elapsed time
 
-
+        loc_res = pd.DataFrame(true_loss.result, columns=['file', 'OD_x', 'OD_y'])
+        loc_res.to_csv("OD2019.csv", index=0)
 
             # plot progress
         print('({batch}/{size}) Data: {data:.6f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.5f} |Trueloss: {true_loss:.4f}'.format(
@@ -296,7 +245,7 @@ def validate(val_loader, model, criterion, num_classes, alpha, debug=False, flip
         return true_loss.real_avg
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+    parser = argparse.ArgumentParser(description='OD_localization')
     # Model structure
     parser.add_argument('--validationRatio', type=float, default=0.90, help='test Validation Split.')
 
@@ -304,7 +253,7 @@ if __name__ == '__main__':
                         choices=model_names,
                         help='model architecture: ' +
                              ' | '.join(model_names) +
-                             ' (default: resnet18)')
+                             ' (default: hg)')
     parser.add_argument('-s', '--stacks', default=1, type=int, metavar='N',
                         help='Number of hourglasses to stack')
     parser.add_argument('--scale', default=256, type=int, metavar='N',
@@ -318,10 +267,6 @@ if __name__ == '__main__':
     # Training strategy
     parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
-    # parser.add_argument('--epochs', default=320, type=int, metavar='N',
-    #                     help='number of total epochs to run')
-    # parser.add_argument('--resume', default='mpii/hg_s8_b1/model_best.pth.tar', type=str, metavar='PATH',
-    #                     help='path to latest checkpoint (default: none)')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
     parser.add_argument('--epochs', default=50, type=int, metavar='N',
@@ -367,123 +312,28 @@ if __name__ == '__main__':
                         help='show intermediate results')
     parser.add_argument('--kind', type=str, default="skirt", help='Number of Clothes.')
 
-    # IDRiD
+    
+    # # FULL DATASETS
     # parser.add_argument('--data_path',
-    #                     default='/home/shiluj/workspace/optic disc/C.Localization/1. Original Images/a. Training Set/', type=str,
+    #                     default='/train/', type=str,
     #                     help='Path to train dataset')
     # parser.add_argument('--data_label_path',
-    #                     default='/home/shiluj/workspace/optic disc/C.Localization/2. Groundtruths/Training Set.csv',
+    #                     default='/train.csv',
     #                     type=str,
     #                     help='Path to train groundtruth')
     # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/workspace/optic disc/C.Localization/1. Original Images/b. Testing Set/',
+    #                     default='/test/',
     #                     type=str,
     #                     help='Path to test dataset')
     # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/workspace/optic disc/C.Localization/2. Groundtruths/Testing Set.csv',
+    #                     default='/test.csv',
     #                     type=str,
     #                     help='Path to test groundtruth')
 
-    # PRIVATE DATASETS_SMALL
-    # parser.add_argument('--data_path',
-    #                     default='/home/shiluj/DATASET/eye_small/train/', type=str,
-    #                     help='Path to train dataset')
-    # parser.add_argument('--data_label_path',
-    #                     default='/home/shiluj/DATASET/eye_small/train.csv',
-    #                     type=str,
-    #                     help='Path to train groundtruth')
-    # # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/DATASET/eye_small/test/',
-    #                     type=str,
-    #                     help='Path to test dataset')
-    # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/DATASET/eye_small/test.csv',
-    #                     type=str,
-    #                     help='Path to test groundtruth')
-
-    # # PRIVATE DATASET
-    # parser.add_argument('--data_path',
-    #                     default='/home/shiluj/DATASET/eye/train/', type=str,
-    #                     help='Path to train dataset')
-    # parser.add_argument('--data_label_path',
-    #                     default='/home/shiluj/DATASET/eye/train-2.csv',
-    #                     type=str,
-    #                     help='Path to train groundtruth')
-    # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/DATASET/eye/test/',
-    #                     type=str,
-    #                     help='Path to test dataset')
-    # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/DATASET/eye/test-2.csv',
-    #                     type=str,
-    #                     help='Path to test groundtruth')
-
-    # # PRIVATE DATASET (partial)
-    # parser.add_argument('--data_path',
-    #                     default='/home/shiluj/DATASET/eye/partial/train/', type=str,
-    #                     help='Path to train dataset')
-    # parser.add_argument('--data_label_path',
-    #                     default='/home/shiluj/DATASET/eye/partial/train-partial-occ.csv',
-    #                     type=str,
-    #                     help='Path to train groundtruth')
-    # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/DATASET/eye/partial/test/',
-    #                     type=str,
-    #                     help='Path to test dataset')
-    # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/DATASET/eye/partial/test-partial-occ.csv',
-    #                     type=str,
-    #                     help='Path to test groundtruth')
-
-    # PRIVATE DATASETS_VESSEL
-    parser.add_argument('--data_path',
-                        # default='/home/shiluj/DATASET/eye_small/train/', type=str,
-                        default='/home/shiluj/DATASET/eye_small/vessel/train/', type=str,
-                        help='Path to train dataset')
-    parser.add_argument('--data_label_path',
-                        default='/home/shiluj/DATASET/eye_small/train.csv',
-                        type=str,
-                        help='Path to train groundtruth')
+    # only test images
     parser.add_argument('--data_path_test',
-                        # default='/home/shiluj/DATASET/eye_small/test/',
-                        default='/home/shiluj/DATASET/eye_small/vessel/test/',
+                        default='/home/shiluj/DATASET/OD_CLA2019/image256/',
                         type=str,
                         help='Path to test dataset')
-    parser.add_argument('--data_label_test_path',
-                        default='/home/shiluj/DATASET/eye_small/test.csv',
-                        type=str,
-                        help='Path to test groundtruth')
-
-    # # STARE
-    # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/DATASET/stare/img/',
-    #                     type=str,
-    #                     help='Path to test dataset')
-    # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/DATASET/stare/ground_truth_256.csv',
-    #                     type=str,
-    #                     help='Path to test groundtruth')
-
-    # # MESSIDOR
-    # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/DATASET/messidor_256/original images/',
-    #                     type=str,
-    #                     help='Path to test dataset')
-    # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/DATASET/messidor_256/bw_mask_jpg/',
-    #                     type=str,
-    #                     help='Path to test groundtruth')
-    #
-    # main(parser.parse_args())
-
-    # # MESSIDOR FAULT
-    # parser.add_argument('--data_path_test',
-    #                     default='/home/shiluj/PROJECT/hourglass_opticdisc/fault_or/',
-    #                     type=str,
-    #                     help='Path to test dataset')
-    # parser.add_argument('--data_label_test_path',
-    #                     default='/home/shiluj/PROJECT/hourglass_opticdisc/fault_gt/',
-    #                     type=str,
-    #                     help='Path to test groundtruth')
 
     main(parser.parse_args())

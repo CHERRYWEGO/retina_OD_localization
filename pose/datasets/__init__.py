@@ -2,6 +2,6 @@
 # from .mscoco import Mscoco
 # from .lsp import LSP
 # from .fashionAi import FashionAI
-from .eye import Eye2
+from .eye import Eye, Eyetest
 
 # __all__ = ('Mpii', 'Mscoco', 'LSP', 'FashionAI')
