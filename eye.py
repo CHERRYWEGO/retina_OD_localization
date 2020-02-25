@@ -217,7 +217,7 @@ def validate(val_loader, model, criterion, num_classes, alpha, debug=False, flip
             # measure elapsed time
 
         loc_res = pd.DataFrame(true_loss.result, columns=['file', 'OD_x', 'OD_y'])
-        loc_res.to_csv("OD2019.csv", index=0)
+        loc_res.to_csv("DR2019.csv", index=0)
 
             # plot progress
         print('({batch}/{size}) Data: {data:.6f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.5f} |Trueloss: {true_loss:.4f}'.format(

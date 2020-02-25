@@ -412,7 +412,7 @@ class EyeMeter(object):
                 img_res = cv2.imread(img_path)
                 cv2.line(img_res, (dis_i[0] - 10, dis_i[1]), (dis_i[0] + 10, dis_i[1]), (0, 0, 0), 2)
                 cv2.line(img_res, (dis_i[0], dis_i[1] - 10), (dis_i[0], dis_i[1] + 10), (0, 0, 0 ), 2)
-                cv2.imwrite('OD2019/'+img_name, img_res)
+                cv2.imwrite('DR2019/'+img_name, img_res)
 
                 self.result.append([img_name, dis_i[0], dis_i[1]])
 
