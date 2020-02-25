@@ -1,6 +1,6 @@
 # Robust Optic Disc Localization by Large Scale Learning
 
-By Shilu Jiang, Zhiyuan Chen, An an Li, and Yunhong Wang
+By Shilu Jiang, Zhiyuan Chen, Annan Li, and Yunhong Wang
 
 ## Introduction
 
@@ -39,9 +39,9 @@ The accuracy of OD localization is measured by two kinds of methods.
 + The predicted OD location is considered successful if it falls in the OD region. Depends on the annotation, the OD region can be rectangle bounding box, oval area or the manual fine contour/mask. 
 + Besides that radius-dependent accuracy is also adopted, in which 1/8, 1/4, 1/2 and one radius are investigated. 
 
+<br/>
 
-
-### Table 1. Performance comparison based on morphologic regions (%).
+**Table 1. Performance comparison based on morphologic regions (%).**
 
 |     Dataset     |      Method      |   Box   |   Oval  | Contour |    ED    | Time(ms) |
 |:---------------:|:----------------:|:-------:|:-------:|:-------:|:--------:|:--------:|
@@ -58,7 +58,9 @@ The accuracy of OD localization is measured by two kinds of methods.
 
 > Time of Giachetti et al. includes both OD and fovea detection.
 
-### Table 2. Performance comparison of OD radius-dependent accuracies (%).
+<br/>
+
+**Table 2. Performance comparison of OD radius-dependent accuracies (%).**
 
 |     Dataset     |         Method        | 1/8 R |   1/4 R   |   1/2 R   |     R     | Time (ms) |
 |:---------------:|:---------------------:|:-----:|:---------:|:---------:|:---------:|:---------:|
