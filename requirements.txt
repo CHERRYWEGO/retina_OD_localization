@@ -218,7 +218,7 @@ torchvision==0.4.2
 tornado==5.1
 tqdm==4.41.0
 traitlets==4.3.2
-Twisted==18.7.0
+Twisted==19.7.0
 unicodecsv==0.14.1
 urllib3==1.23
 visdom==0.1.8.9
