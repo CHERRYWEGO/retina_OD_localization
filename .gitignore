@@ -1,8 +1,5 @@
 # model
 *.pth
-.ipynb_checkpoints
-.vscode
-.idea
-
-OD2019/
-OD2019.csv
+.ipynb_checkpoints/
+.vscode/
+.idea/
