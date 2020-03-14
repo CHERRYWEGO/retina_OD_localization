@@ -18,7 +18,7 @@ For more details, please refer to our [OMIA paper](https://link.springer.com/cha
 + To facilitate the large dataset, an encoder-decoder network with deeper architecture and recursive mechanism is adopted to OD localization; 
 + Extensive experiments show the superior performance over state of the arts.
 
-![avatar](1.png)
+![avatar](pics/1.png)
 
 ## Framework
 We normalize the fundus image by fitting the circle and cropping the image.
@@ -26,11 +26,11 @@ Then the normalized image is fed to an encoder-decoder network with residual con
 Output of the network is a probability map of OD location from which we can get the final coordinates of estimated OD center. 
 As for the final predicted location of OD center, we count the mean coordinate of all the pixels with the value greater than 70% of the maximum value in the output heat map.
 
-![avatar](pipeline.png)
+![avatar](pics/pipeline.png)
 
 ## Result
 
-![avatar](result1.png)
+![avatar](pics/result1.png)
 
 **Evaluation Methodology :**
 
