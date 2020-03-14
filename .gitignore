@@ -1,5 +1,6 @@
 # model
 *.pth
+.*
 
 OD2019/
 OD2019.csv
